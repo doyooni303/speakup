@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0e0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SpeakUp">
+<title>SpeakUp</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f14;
+  --surface: #16181f;
+  --surface2: #1e2029;
+  --border: rgba(255,255,255,0.08);
+  --accent: #6c63ff;
+  --accent-dim: rgba(108,99,255,0.15);
+  --green: #43e8b0;
+  --green-dim: rgba(67,232,176,0.12);
+  --amber: #f5a623;
+  --amber-dim: rgba(245,166,35,0.12);
+  --red: #ff6b6b;
+  --text: #e8e9f0;
+  --muted: #6b6e80;
+  --muted2: #3a3d4d;
+  --radius: 16px;
+  --font: 'Sora', system-ui, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+/* ── 레이아웃 ── */
+#app { display: flex; flex-direction: column; height: 100dvh; }
+
+/* ── 헤더 ── */
+header {
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+.logo { width: 32px; height: 32px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo svg { width: 18px; height: 18px; }
+header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; flex: 1; }
+header h1 span { color: var(--accent); }
+
+/* 난이도 선택기 */
+.level-pills { display: flex; gap: 4px; }
+.pill {
+  padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  border: 0.5px solid var(--border); background: var(--surface2);
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  letter-spacing: 0.2px;
+}
+.pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* ── 채팅 영역 ── */
+#chat {
+  flex: 1; overflow-y: auto; padding: 16px 14px;
+  display: flex; flex-direction: column; gap: 14px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+#chat::-webkit-scrollbar { display: none; }
+
+/* 메시지 버블 */
+.msg { display: flex; flex-direction: column; gap: 6px; max-width: 88%; animation: fadeUp 0.22s ease; }
+.msg.user { align-self: flex-end; align-items: flex-end; }
+.msg.ai   { align-self: flex-start; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.bubble {
+  padding: 11px 14px; border-radius: 14px; font-size: 14.5px; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
+}
+.msg.user .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.msg.ai   .bubble { background: var(--surface2); color: var(--text); border-bottom-left-radius: 4px; border: 0.5px solid var(--border); }
+
+/* 피드백 카드 */
+.feedback { display: flex; flex-direction: column; gap: 6px; }
+.fb-card {
+  border-radius: 10px; padding: 9px 12px; font-size: 12.5px; line-height: 1.55;
+  border: 0.5px solid;
+}
+.fb-grammar { background: var(--amber-dim); border-color: rgba(245,166,35,0.3); }
+.fb-grammar .fb-label { color: var(--amber); }
+.fb-better  { background: var(--green-dim);  border-color: rgba(67,232,176,0.25); }
+.fb-better  .fb-label { color: var(--green); }
+.fb-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 3px; }
+.fb-text { color: var(--text); }
+
+/* 타임스탬프 */
+.ts-label { font-size: 10px; color: var(--muted); padding: 0 4px; }
+
+/* 로딩 도트 */
+.typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px; background: var(--surface2); border-radius: 14px; border-bottom-left-radius: 4px; border: 0.5px solid var(--border); width: fit-content; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: bounce 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
+
+/* 시작 화면 */
+#welcome {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 32px 24px; text-align: center;
+}
+#welcome .big { font-size: 38px; }
+#welcome h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; }
+#welcome p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+.topic-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+.topic-chip {
+  padding: 8px 16px; border-radius: 20px; font-size: 13px;
+  background: var(--surface2); border: 0.5px solid var(--border);
+  color: var(--text); cursor: pointer; transition: all 0.15s;
+}
+.topic-chip:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.97); }
+
+/* ── 입력창 ── */
+#input-area {
+  padding: 10px 12px calc(var(--safe-bot) + 10px);
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  display: flex; gap: 8px; align-items: flex-end;
+  flex-shrink: 0;
+}
+#msg-input {
+  flex: 1; background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: 22px; padding: 10px 16px; font-size: 15px; font-family: var(--font);
+  color: var(--text); resize: none; outline: none; line-height: 1.4;
+  max-height: 120px; overflow-y: auto;
+  transition: border-color 0.15s;
+}
+#msg-input::placeholder { color: var(--muted); }
+#msg-input:focus { border-color: rgba(108,99,255,0.5); }
+#send-btn {
+  width: 42px; height: 42px; border-radius: 50%; background: var(--accent);
+  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: transform 0.12s, opacity 0.12s;
+}
+#send-btn:disabled { opacity: 0.4; }
+#send-btn:active:not(:disabled) { transform: scale(0.92); }
+#send-btn svg { width: 18px; height: 18px; fill: white; }
+
+/* ── 설정 모달 ── */
+#api-modal {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7); align-items: flex-end; justify-content: center;
+}
+#api-modal.open { display: flex; }
+.modal-sheet {
+  background: var(--surface); border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(var(--safe-bot) + 20px);
+  width: 100%; max-width: 480px;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 40px; height: 4px; background: var(--muted2); border-radius: 2px; margin: 0 auto 16px; }
+.modal-sheet h3 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.modal-sheet p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+.modal-sheet a { color: var(--accent); }
+.api-input {
+  width: 100%; background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; font-size: 14px; font-family: var(--font);
+  color: var(--text); outline: none; margin-bottom: 12px;
+  transition: border-color 0.15s;
+}
+.api-input:focus { border-color: var(--accent); }
+.modal-btn {
+  width: 100%; padding: 14px; border-radius: 12px; border: none;
+  background: var(--accent); color: white; font-size: 15px; font-weight: 600;
+  font-family: var(--font); cursor: pointer; transition: opacity 0.15s;
+}
+.modal-btn:active { opacity: 0.8; }
+.key-icon { cursor: pointer; opacity: 0.7; transition: opacity 0.15s; }
+.key-icon:active { opacity: 1; }
+
+/* 에러 토스트 */
+#toast {
+  position: fixed; bottom: calc(var(--safe-bot) + 80px); left: 50%; transform: translateX(-50%);
+  background: var(--red); color: white; padding: 10px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 500; white-space: nowrap;
+  opacity: 0; transition: opacity 0.2s; z-index: 200; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <h1>Speak<span>Up</span></h1>
+    <div class="level-pills">
+      <button class="pill active" data-level="beginner" onclick="setLevel('beginner',this)">초급</button>
+      <button class="pill" data-level="intermediate" onclick="setLevel('intermediate',this)">중급</button>
+      <button class="pill" data-level="advanced" onclick="setLevel('advanced',this)">고급</button>
+    </div>
+    <svg class="key-icon" onclick="openModal()" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/>
+    </svg>
+  </header>
+
+  <!-- 시작 화면 -->
+  <div id="welcome">
+    <div class="big">💬</div>
+    <h2>영어로 자유롭게 대화하세요</h2>
+    <p>AI가 자연스러운 답변과 함께<br>문법 교정 · 더 나은 표현을 알려드려요</p>
+    <div class="topic-chips">
+      <div class="topic-chip" onclick="startTopic('자기소개를 해볼게요. My name is...')">자기소개</div>
+      <div class="topic-chip" onclick="startTopic('Can we talk about travel? I want to practice.')">여행</div>
+      <div class="topic-chip" onclick="startTopic('I want to practice ordering food at a restaurant.')">식당 주문</div>
+      <div class="topic-chip" onclick="startTopic('Let\'s talk about my daily routine.')">일상 대화</div>
+      <div class="topic-chip" onclick="startTopic('Can you help me practice job interview English?')">면접 영어</div>
+      <div class="topic-chip" onclick="startTopic('I want to practice small talk.')">스몰토크</div>
+    </div>
+  </div>
+
+  <!-- 채팅창 (처음엔 숨김) -->
+  <div id="chat" style="display:none"></div>
+
+  <div id="input-area">
+    <textarea id="msg-input" rows="1" placeholder="영어로 입력하세요..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button id="send-btn" onclick="sendMsg()" disabled>
+      <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- API 키 모달 -->
+<div id="api-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3>API 키 설정</h3>
+    <p>
+      Anthropic API 키를 입력하세요. 키는 이 기기의 브라우저에만 저장되며 외부로 전송되지 않습니다.<br>
+      키가 없으시면 <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>에서 발급받으세요.
+    </p>
+    <input class="api-input" id="api-key-input" type="password" placeholder="sk-ant-..." oninput="document.getElementById('save-btn').disabled=!this.value.trim()">
+    <button class="modal-btn" id="save-btn" onclick="saveKey()" disabled>저장하기</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const LEVELS = {
+  beginner:     { label:'초급', desc:'Simple vocabulary, short sentences. Correct major errors gently. Encourage the user a lot.' },
+  intermediate: { label:'중급', desc:'Natural conversational English. Point out grammar errors and suggest better phrasing.' },
+  advanced:     { label:'고급', desc:'Native-level fluency expected. Give detailed grammar and expression feedback. Use sophisticated vocabulary.' }
+};
+
+let level = 'beginner';
+let history = [];
+let apiKey = localStorage.getItem('speakup_api_key') || '';
+let isLoading = false;
+
+// ── 초기화 ──
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  if (!apiKey) setTimeout(openModal, 600);
+  document.getElementById('msg-input').addEventListener('input', () => {
+    document.getElementById('send-btn').disabled = !document.getElementById('msg-input').value.trim() || isLoading;
+  });
+});
+
+function setLevel(l, btn) {
+  level = l;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  if (history.length > 0) showToastMsg(`난이도: ${LEVELS[l].label}으로 변경됐어요`);
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!document.getElementById('send-btn').disabled) sendMsg();
+  }
+}
+
+// ── 토픽 시작 ──
+function startTopic(text) {
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('chat').style.display = 'flex';
+  document.getElementById('msg-input').value = text;
+  autoResize(document.getElementById('msg-input'));
+  document.getElementById('send-btn').disabled = false;
+  sendMsg();
+}
+
+// ── 메시지 전송 ──
+async function sendMsg() {
+  if (!apiKey) { openModal(); return; }
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text || isLoading) return;
+
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('chat').style.display = 'flex';
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  isLoading = true;
+
+  appendMsg('user', text);
+  history.push({ role: 'user', content: text });
+
+  const typing = appendTyping();
+
+  try {
+    const systemPrompt = buildSystem();
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: history
+      })
+    });
+
+    const data = await res.json();
+    typing.remove();
+
+    if (!res.ok) throw new Error(data.error?.message || 'API 오류');
+
+    const raw = data.content?.[0]?.text || '';
+    let parsed;
+    try {
+      const jsonStr = raw.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      parsed = { reply: raw, grammar_feedback: null, better_expression: null };
+    }
+
+    history.push({ role: 'assistant', content: raw });
+    appendAiMsg(parsed);
+
+  } catch (err) {
+    typing.remove();
+    showToastMsg('오류: ' + (err.message || '다시 시도해주세요'));
+  }
+
+  isLoading = false;
+  document.getElementById('send-btn').disabled = !input.value.trim();
+}
+
+// ── 시스템 프롬프트 ──
+function buildSystem() {
+  return `You are a friendly English conversation tutor. Level: ${level} — ${LEVELS[level].desc}
+
+Respond ONLY with valid JSON (no markdown fences) in this exact format:
+{
+  "reply": "Your natural English response here",
+  "grammar_feedback": "If the user made grammar mistakes, explain them in Korean clearly. If no errors, return null.",
+  "better_expression": "If there is a more natural or native-sounding way to say what the user said, show it in English with a brief Korean explanation. If already natural, return null."
+}
+
+Keep reply warm, encouraging, and conversational. For beginners use simple English. For advanced users be more sophisticated.`;
+}
+
+// ── UI 렌더링 ──
+function appendMsg(role, text) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  div.innerHTML = `<div class="bubble">${escHtml(text)}</div><span class="ts-label">${now}</span>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function appendTyping() {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.innerHTML = `<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function appendAiMsg(parsed) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  let html = `<div class="bubble">${escHtml(parsed.reply)}</div>`;
+
+  if (parsed.grammar_feedback || parsed.better_expression) {
+    html += `<div class="feedback">`;
+    if (parsed.grammar_feedback) {
+      html += `<div class="fb-card fb-grammar"><div class="fb-label">📝 문법 피드백</div><div class="fb-text">${escHtml(parsed.grammar_feedback)}</div></div>`;
+    }
+    if (parsed.better_expression) {
+      html += `<div class="fb-card fb-better"><div class="fb-label">✨ 더 자연스러운 표현</div><div class="fb-text">${escHtml(parsed.better_expression)}</div></div>`;
+    }
+    html += `</div>`;
+  }
+  html += `<span class="ts-label">${now}</span>`;
+  div.innerHTML = html;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── API 모달 ──
+function openModal() {
+  const modal = document.getElementById('api-modal');
+  const input = document.getElementById('api-key-input');
+  modal.classList.add('open');
+  if (apiKey) input.value = apiKey;
+  setTimeout(() => input.focus(), 300);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); }, { once: true });
+}
+
+function saveKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val) return;
+  apiKey = val;
+  localStorage.setItem('speakup_api_key', val);
+  document.getElementById('api-modal').classList.remove('open');
+  showToastMsg('API 키가 저장됐어요');
+}
+
+// ── 토스트 ──
+function showToastMsg(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
